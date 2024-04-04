@@ -18,6 +18,16 @@ public class manager : MonoBehaviour
 
         // 線の設定
         renderer.SetWidth(0.1f, 0.1f); // 線の幅
+        
+        point.Add((GameObject)Instantiate(pObj, new Vector3(0, 3f, 0.0f), Quaternion.identity));
+        point.Add((GameObject)Instantiate(pObj, new Vector3(0, 2.1f, 0.0f), Quaternion.identity));
+        point.Add((GameObject)Instantiate(pObj, new Vector3(0, 2.5f, 0.0f), Quaternion.identity));
+        point.Add((GameObject)Instantiate(pObj, new Vector3(0, 2.7f, 0.0f), Quaternion.identity));
+        point.Add((GameObject)Instantiate(pObj, new Vector3(0, 1.2f, 0.0f), Quaternion.identity));
+        point.Add((GameObject)Instantiate(pObj, new Vector3(0, 0.5f, 0.0f), Quaternion.identity));
+        point.Add((GameObject)Instantiate(pObj, new Vector3(0, 0.1f, 0.0f), Quaternion.identity));
+        point.Add((GameObject)Instantiate(pObj, new Vector3(0, 2.5f, 0.0f), Quaternion.identity));
+        point.Add((GameObject)Instantiate(pObj, new Vector3(1, 4f, 0.0f), Quaternion.identity));
     }
 
     // Update is called once per frame
@@ -47,7 +57,8 @@ public class manager : MonoBehaviour
                 pos.Add(wrkPnt.transform.position);
             }
 
-            pos = SlowConvexHull(pos);
+//          pos = SlowConvexHull(pos);
+            pos = ConvexHull(pos);
             if(pos.Count > 1){
                 drawLine(pos);
             }
@@ -134,6 +145,126 @@ public class manager : MonoBehaviour
         }
 
         return resultList;
+    }
+
+    void printAry(List<Vector3> argPoint){
+        string t;
+        t = "";
+        foreach(var v in argPoint) t += ", " + v;
+        Debug.Log(t);
+    }
+
+    List<Vector3> ConvexHull(List<Vector3> argPoint){
+
+        List<Vector3>   lupperList    = new List<Vector3>();
+        List<Vector3>   llowerList    = new List<Vector3>();
+        int ite;
+        int listnum;
+        int pn = argPoint.Count;
+
+        if(argPoint.Count < 3) return argPoint;
+
+        //  1. 点をx座標値の順にソートし、得られたソート列をp1...pnとする
+        QuickSort(argPoint, 0, pn - 1);
+        printAry(argPoint);
+
+        //  2. リストLupperを(p1, p2)と初期設定する
+        lupperList.Add(argPoint[0]);
+        lupperList.Add(argPoint[1]);
+        listnum = 1;
+
+        for(ite = 2; ite < pn; ite++){ //  3. for i <- 3 to n
+            //  4. do pi を Lupperに追加する
+            lupperList.Add(argPoint[ite]);
+            listnum++;
+
+            //  5. while Lupperが3点以上を含んでいて、しかもLupperの最後の3点が右回りでない
+            while((lupperList.Count >= 3) && (side(lupperList[listnum - 2], lupperList[listnum - 1], lupperList[listnum]) < 0)){
+                lupperList.RemoveAt(listnum - 1); //  6. do 最後の3点のうち中央の点をリストLupperから削除
+                listnum--;
+            }
+        }
+
+        //  7. リストLlowerを(pn, pn-1)と初期設定する
+        llowerList.Add(argPoint[pn - 1]);
+        llowerList.Add(argPoint[pn - 2]);
+        listnum = 1;
+
+        for(ite = pn - 3; ite >= 0; ite--){ //  8. for i <- n - 2 downto 1
+            //  9. do piをLlowerに追加する
+            llowerList.Add(argPoint[ite]);
+            listnum++;
+
+            // 10. while Lupperが3点以上を含んでいて、しかもLlowerの最後の3点が右回りでない
+            while((llowerList.Count >= 3) && (side(llowerList[listnum - 2], llowerList[listnum - 1], llowerList[listnum]) < 0)){
+                llowerList.RemoveAt(listnum - 1); // 11. do 最後の3点のうちの中央の点をリストLlowerから削除
+                listnum--;
+            }
+            
+        }
+
+        // 12. 上部と下部の凸包は最初の点と最後の点が同一であるので、その重複を避けるためにLlowerからそれらの2点を削除する。
+        llowerList.RemoveAt(0);
+        //llowerList.RemoveAt(llowerList.Count - 1); // 線をつなぐために最後に最初の点を追加する必要あり
+
+        // 13. LlowerとLupperを連結し、得られたリストをLと呼ぶ
+        llowerList.ForEach(llowerList => lupperList.Add(llowerList));
+       
+        return lupperList; // 14. return L
+    }
+
+    // 引数で渡された値の中から中央値を返す
+    float GetMediaumValue(float top, float mid, float bottom){
+        if(top < mid){
+            if(mid < bottom){
+                return mid;
+            }else if(bottom < top){
+                return top;
+            }else{
+                return bottom;
+            }
+        }else{
+            if(bottom < mid){
+                return mid;
+            }else if(top < bottom){
+                return top;
+            }else{
+                return bottom;
+            }
+        }
+    }
+
+    
+
+    void QuickSort(List<Vector3> argData, int left, int right){
+
+        Vector3 tmp;
+
+        if(left >= right){
+            return;
+        }
+
+        int i = left;  // ->方向のイテレータ
+        int j = right; // <-方向のイテレータ
+        float pivot = GetMediaumValue(argData[i].x, argData[(left + right) / 2].x, argData[j].x); // 中央値をピボットとする
+
+        while(true){
+            // 交換対象のインデックスを検索
+            while(argData[i].x < pivot){ i++; }
+            while(argData[j].x > pivot){ j--; }
+            if(i >= j)break; // イテレータが反転したらbreak
+
+            // swap
+            tmp = argData[i];
+            argData[i] = argData[j];
+            argData[j] = tmp;
+
+            i++;
+            j--;
+        }
+
+        QuickSort(argData, left , i - 1);
+        QuickSort(argData, j + 1, right);
     }
 
     void drawLine(List<Vector3> argPoint){
